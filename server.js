@@ -2,7 +2,7 @@ const WebSocket = require("ws");
 const http = require("http");
 
 // Definimos el puerto dinámico asignado por Railway
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 80;
 
 // Creamos el servidor HTTP (Railway maneja HTTPS automáticamente)
 const server = http.createServer();
@@ -55,6 +55,6 @@ wss.on("connection", (ws) => {
 });
 
 // Inicia el servidor HTTP y WebSocket
-server.listen(PORT, () => {
-  console.log(`Servidor WebSocket escuchando en el puerto ${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
