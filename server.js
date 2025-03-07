@@ -15,16 +15,17 @@ let devices = [];
 wss.on("connection", (ws) => {
   console.log("Un cliente se ha conectado");
 
+  // Asignamos un ID único a cada dispositivo
   const deviceId = `device-${Date.now()}`;
-  devices.push({ deviceId, ws }); // Guardamos también la referencia a WebSocket para cada dispositivo
+  devices.push({ deviceId, ws }); // Guardamos la referencia al WebSocket junto con el deviceId
 
-  // Enviar la lista de dispositivos conectados
+  // Enviar la lista de dispositivos conectados junto con su peerId
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(
         JSON.stringify({
           type: "update-devices",
-          devices: devices.map((d) => d.deviceId),
+          devices: devices.map((d) => ({ peerId: d.deviceId })), // Enviamos el peerId en lugar del deviceId
         })
       );
     }
@@ -50,13 +51,14 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     console.log("Un cliente se ha desconectado");
+    // Eliminamos el dispositivo de la lista de dispositivos
     devices = devices.filter((device) => device.deviceId !== deviceId);
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(
           JSON.stringify({
             type: "update-devices",
-            devices: devices.map((d) => d.deviceId),
+            devices: devices.map((d) => ({ peerId: d.deviceId })), // Enviamos el peerId actualizado
           })
         );
       }
