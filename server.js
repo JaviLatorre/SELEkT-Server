@@ -1,5 +1,5 @@
 const WebSocket = require("ws");
-const https = require("https");
+const https = require("http");
 
 // Definimos el puerto dinámico asignado por Railway
 const PORT = process.env.PORT || 8080;
