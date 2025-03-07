@@ -17,6 +17,8 @@ wss.on("connection", (ws) => {
 
   // Asignamos un ID único a cada dispositivo
   const deviceId = `device-${Date.now()}`;
+  const peerId = `peer-${deviceId}`;
+  
   devices.push({ deviceId, ws }); // Guardamos la referencia al WebSocket junto con el deviceId
 
   // Enviar la lista de dispositivos conectados junto con su peerId
