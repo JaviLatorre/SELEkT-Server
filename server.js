@@ -1,4 +1,4 @@
-const WebSocket = require("ws");
+const WebSocket = require("http");
 
 // Definimos el puerto dinámico asignado por Render
 const PORT = process.env.PORT || 8080;
