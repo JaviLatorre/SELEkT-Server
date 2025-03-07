@@ -31,6 +31,19 @@ wss.on("connection", (ws) => {
     }
   });
 
+  // Enviar un mensaje de "peer-joined" a todos los clientes con el nuevo peerId
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(
+        JSON.stringify({
+          type: "peer-joined",
+          peerId, // Incluimos el peerId en el mensaje
+          peer: deviceId, // Pasamos también el deviceId
+        })
+      );
+    }
+  });
+
   ws.on("message", (message) => {
     try {
       const data = JSON.parse(message);
