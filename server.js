@@ -1,10 +1,19 @@
-const WebSocket = require("http");
+const WebSocket = require("ws");
+const https = require("https");
+const fs = require("fs");
 
-// Definimos el puerto dinámico asignado por Render
+// Definimos el puerto dinámico asignado por Railway
 const PORT = process.env.PORT || 8080;
 
-// Creamos el servidor WebSocket
-const wss = new WebSocket.Server({ port: PORT });
+// Creamos un servidor HTTPS (pero Railway ya gestiona esto automáticamente en su dominio)
+const server = https.createServer({
+  // Si estuvieras utilizando un certificado SSL propio, lo añadirías aquí
+  // key: fs.readFileSync("path/to/your/private.key"),
+  // cert: fs.readFileSync("path/to/your/certificate.crt"),
+});
+
+// Creamos el servidor WebSocket, pero usando el servidor HTTPS
+const wss = new WebSocket.Server({ server });
 
 let devices = [];
 
@@ -56,4 +65,9 @@ wss.on("connection", (ws) => {
   });
 });
 
-console.log(`Servidor WebSocket escuchando en el puerto ${PORT}`);
+// Iniciamos el servidor HTTPS
+server.listen(PORT, () => {
+  console.log(
+    `Servidor WebSocket seguro escuchando en wss://localhost:${PORT}`
+  );
+});
