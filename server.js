@@ -1,7 +1,7 @@
 const WebSocket = require("ws");
 
 // Definimos el puerto dinámico asignado por Render
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 8080;
 
 // Creamos el servidor WebSocket
 const wss = new WebSocket.Server({ port: PORT });
