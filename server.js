@@ -16,12 +16,17 @@ wss.on("connection", (ws) => {
   console.log("Un cliente se ha conectado");
 
   const deviceId = `device-${Date.now()}`;
-  devices.push(deviceId);
+  devices.push({ deviceId, ws }); // Guardamos también la referencia a WebSocket para cada dispositivo
 
   // Enviar la lista de dispositivos conectados
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: "update-devices", devices }));
+      client.send(
+        JSON.stringify({
+          type: "update-devices",
+          devices: devices.map((d) => d.deviceId),
+        })
+      );
     }
   });
 
@@ -45,10 +50,15 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     console.log("Un cliente se ha desconectado");
-    devices = devices.filter((id) => id !== deviceId);
+    devices = devices.filter((device) => device.deviceId !== deviceId);
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: "update-devices", devices }));
+        client.send(
+          JSON.stringify({
+            type: "update-devices",
+            devices: devices.map((d) => d.deviceId),
+          })
+        );
       }
     });
   });
