@@ -18,7 +18,7 @@ wss.on("connection", (ws) => {
   // Asignamos un ID único a cada dispositivo
   const deviceId = `device-${Date.now()}`;
   const peerId = `peer-${deviceId}`;
-  
+
   devices.push({ deviceId, ws }); // Guardamos la referencia al WebSocket junto con el deviceId
 
   // Enviar la lista de dispositivos conectados junto con su peerId
@@ -66,8 +66,23 @@ wss.on("connection", (ws) => {
 
   ws.on("close", () => {
     console.log("Un cliente se ha desconectado");
+
     // Eliminamos el dispositivo de la lista de dispositivos
     devices = devices.filter((device) => device.deviceId !== deviceId);
+
+    // Notificar a todos los clientes que un peer se ha desconectado
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(
+          JSON.stringify({
+            type: "peer-left", // Enviamos el tipo "peer-left"
+            peerId, // El peerId del cliente que se desconectó
+          })
+        );
+      }
+    });
+
+    // También actualizar la lista de dispositivos conectados
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(
@@ -80,6 +95,7 @@ wss.on("connection", (ws) => {
     });
   });
 });
+
 
 // Inicia el servidor HTTP y WebSocket
 server.listen(PORT, "0.0.0.0", () => {
