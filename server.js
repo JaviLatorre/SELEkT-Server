@@ -61,13 +61,16 @@ function generateName(seed) {
 
 // Función para obtener el nombre del dispositivo basado en el User Agent
 function getDeviceName() {
-  const ua = navigator.userAgent;
-  if (ua.indexOf("Android") > -1) return "Dispositivo Android";
-  if (ua.indexOf("iPhone") > -1 || ua.indexOf("iPad") > -1)
-    return "Dispositivo iOS";
-  if (ua.indexOf("Windows") > -1) return "PC con Windows";
-  if (ua.indexOf("Mac") > -1) return "Mac";
-  return "Dispositivo Desconocido";
+  // Verifica si estamos en un entorno de navegador
+  if (typeof navigator !== "undefined" && navigator.userAgent) {
+    const ua = navigator.userAgent;
+    if (ua.indexOf("Android") > -1) return "Dispositivo Android";
+    if (ua.indexOf("iPhone") > -1 || ua.indexOf("iPad") > -1)
+      return "Dispositivo iOS";
+    if (ua.indexOf("Windows") > -1) return "PC con Windows";
+    if (ua.indexOf("Mac") > -1) return "Mac";
+  }
+  return "Dispositivo Desconocido"; // En caso de no estar en navegador
 }
 
 // Definimos el puerto dinámico asignado por Railway
