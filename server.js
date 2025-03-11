@@ -100,18 +100,6 @@ wss.on("connection", (ws) => {
     })
   );
 
-  ws.send(
-    JSON.stringify({
-      type: "update-devices",
-      devices: devices.map((d) => ({
-        peerId: d.deviceId,
-        displayName: d.displayName,
-        deviceName: d.deviceName,
-      })),
-    })
-  );
-
-
   // Enviar la lista de dispositivos conectados junto con su peerId
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
