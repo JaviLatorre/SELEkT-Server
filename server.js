@@ -39,7 +39,7 @@ wss.on("connection", (ws) => {
       client.send(
         JSON.stringify({
           type: "peer-joined",
-          peerId, // Incluimos el peerId en el mensaje
+          peerId: peerId, // Incluimos el peerId en el mensaje
           peer: deviceId, // Pasamos también el deviceId
         })
       );
