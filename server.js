@@ -1,6 +1,7 @@
 const WebSocket = require("ws");
 const http = require("http");
 const { uniqueNamesGenerator } = require("unique-names-generator");
+const { Blob } = require("buffer");
 
 const colores = [
   "Rojo",
@@ -117,23 +118,25 @@ ws.on("message", async (message) => {
   console.log("Mensaje recibido en el servidor.");
 
   try {
-    // Verificar si message es un Buffer (como en WebSocket de Node.js)
-    if (message instanceof Buffer) {
+    // Verificar si message es un Buffer (lo esperado en WebSocket de Node.js)
+    if (Buffer.isBuffer(message)) {
       console.log("Mensaje recibido como Buffer.");
 
-      // Convertir el buffer a JSON + archivo
+      // Buscar el final del JSON en el mensaje
       const separatorIndex = message.indexOf(125) + 1; // 125 es "}" en ASCII
       if (separatorIndex === 0) throw new Error("No se encontró JSON válido");
 
+      // Extraer JSON del mensaje
       const jsonString = message.slice(0, separatorIndex).toString("utf-8");
       const data = JSON.parse(jsonString);
 
       if (data.type === "send-file") {
         console.log("Recibiendo archivo:", data.fileName);
 
-        // Extraer el archivo restante
+        // Extraer los datos del archivo del buffer restante
         const fileBuffer = message.slice(separatorIndex);
 
+        // Encontrar el destinatario
         const recipientPeer = devices.find(
           (device) => device.deviceId === data.peerId
         );
@@ -164,6 +167,7 @@ ws.on("message", async (message) => {
     console.error("Error procesando mensaje:", error);
   }
 });
+
 
 
 
