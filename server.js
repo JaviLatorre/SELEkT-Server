@@ -114,25 +114,31 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("message", (message) => {
-    console.log('Mensaje recibido en el servidor:', message)
+    console.log("Mensaje recibido en el servidor:", message);
     try {
       const data = JSON.parse(message);
 
       if (data.type === "send-file") {
         console.log("Recibiendo archivo...");
+        console.log("Tipo de fileData:", data.fileData); // Verifica si es un ArrayBuffer
 
-        console.log("peerId recibido:", data.peerId);
+        // Asegúrate de que fileData es un ArrayBuffer
+        if (!(data.fileData instanceof ArrayBuffer)) {
+          console.error("El archivo no es un ArrayBuffer válido.");
+          return;
+        }
 
-        // Identificar el peer al que se le enviará el archivo
         const recipientPeer = devices.find(
           (device) => device.deviceId === data.peerId
         );
 
-        console.log("recipientPeer:", recipientPeer); // Verifica si está encontrando el peer
-        console.log("readyState de recipientPeer.ws:",recipientPeer.ws.readyState); // Verifica el estado
+        console.log("recipientPeer:", recipientPeer);
+        console.log(
+          "readyState de recipientPeer.ws:",
+          recipientPeer.ws.readyState
+        );
 
         if (recipientPeer && recipientPeer.ws.readyState === WebSocket.OPEN) {
-          // Enviar el archivo solo al peer destinatario
           console.log("Enviando archivo al Peer");
           recipientPeer.ws.send(
             JSON.stringify({ type: "receive-file", fileData: data.fileData })
@@ -143,6 +149,7 @@ wss.on("connection", (ws) => {
       console.error("Error procesando mensaje:", error);
     }
   });
+
 
 
   ws.on("close", () => {
