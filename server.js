@@ -121,6 +121,8 @@ wss.on("connection", (ws) => {
       if (data.type === "send-file") {
         console.log("Recibiendo archivo...");
 
+        console.log("peerId recibido:", data.peerId);
+
         // Identificar el peer al que se le enviará el archivo
         const recipientPeer = devices.find(
           (device) => device.deviceId === data.peerId
