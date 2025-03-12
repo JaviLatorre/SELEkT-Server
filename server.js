@@ -113,7 +113,7 @@ wss.on("connection", (ws) => {
     }
   });
 
-  ws.wss.on("message", (message) => {
+  ws.on("message", (message) => {
     try {
       const data = JSON.parse(message);
 
