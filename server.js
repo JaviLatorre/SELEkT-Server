@@ -114,6 +114,7 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("message", (message) => {
+    console.log('Mensaje recibido en el servidor:', message)
     try {
       const data = JSON.parse(message);
 
