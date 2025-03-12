@@ -113,23 +113,30 @@ wss.on("connection", (ws) => {
     }
   });
 
-  ws.on("message", (message) => {
+  ws.wss.on("message", (message) => {
     try {
       const data = JSON.parse(message);
+
       if (data.type === "send-file") {
         console.log("Recibiendo archivo...");
-        wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(
-              JSON.stringify({ type: "receive-file", fileData: data.fileData })
-            );
-          }
-        });
+
+        // Identificar el peer al que se le enviará el archivo
+        const recipientPeer = devices.find(
+          (device) => device.deviceId === data.peerId
+        );
+
+        if (recipientPeer && recipientPeer.ws.readyState === WebSocket.OPEN) {
+          // Enviar el archivo solo al peer destinatario
+          recipientPeer.ws.send(
+            JSON.stringify({ type: "receive-file", fileData: data.fileData })
+          );
+        }
       }
     } catch (error) {
       console.error("Error procesando mensaje:", error);
     }
   });
+
 
   ws.on("close", () => {
     console.log("Un cliente se ha desconectado");
