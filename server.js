@@ -128,6 +128,7 @@ wss.on("connection", (ws) => {
 
         if (recipientPeer && recipientPeer.ws.readyState === WebSocket.OPEN) {
           // Enviar el archivo solo al peer destinatario
+          console.log('Enviando archivo al Peer')
           recipientPeer.ws.send(
             JSON.stringify({ type: "receive-file", fileData: data.fileData })
           );
