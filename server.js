@@ -117,44 +117,48 @@ ws.on("message", async (message) => {
   console.log("Mensaje recibido en el servidor.");
 
   try {
-    // Convertir el mensaje en un ArrayBuffer
-    const arrayBuffer = await message.arrayBuffer();
+    // Verificar si message es un Buffer (como en WebSocket de Node.js)
+    if (message instanceof Buffer) {
+      console.log("Mensaje recibido como Buffer.");
 
-    // Extraer el JSON del inicio del mensaje
-    const decoder = new TextDecoder();
-    const textPart = decoder.decode(arrayBuffer.slice(0, 256)); // Lee los primeros 256 bytes (ajusta según tamaño del JSON)
+      // Convertir el buffer a JSON + archivo
+      const separatorIndex = message.indexOf(125) + 1; // 125 es "}" en ASCII
+      if (separatorIndex === 0) throw new Error("No se encontró JSON válido");
 
-    const jsonEnd = textPart.indexOf("}") + 1; // Encuentra el final del JSON
-    if (jsonEnd === 0)
-      throw new Error("No se encontró JSON válido en el mensaje");
+      const jsonString = message.slice(0, separatorIndex).toString("utf-8");
+      const data = JSON.parse(jsonString);
 
-    const jsonString = textPart.substring(0, jsonEnd);
-    const data = JSON.parse(jsonString); // Convertir a objeto
+      if (data.type === "send-file") {
+        console.log("Recibiendo archivo:", data.fileName);
 
-    if (data.type === "send-file") {
-      console.log("Recibiendo archivo...");
+        // Extraer el archivo restante
+        const fileBuffer = message.slice(separatorIndex);
 
-      // Extraer el archivo del ArrayBuffer restante
-      const fileBuffer = arrayBuffer.slice(jsonEnd);
-      console.log("Archivo recibido, tamaño:", fileBuffer.byteLength);
+        const recipientPeer = devices.find(
+          (device) => device.deviceId === data.peerId
+        );
 
-      const recipientPeer = devices.find(
-        (device) => device.deviceId === data.peerId
-      );
+        console.log("recipientPeer:", recipientPeer);
 
-      console.log("recipientPeer:", recipientPeer);
+        if (recipientPeer && recipientPeer.ws.readyState === WebSocket.OPEN) {
+          console.log("Enviando archivo al Peer");
 
-      if (recipientPeer && recipientPeer.ws.readyState === WebSocket.OPEN) {
-        console.log("Enviando archivo al Peer");
-
-        // Enviar el archivo como Blob
-        const responseMessage = new Blob([
-          JSON.stringify({ type: "receive-file", fileName: data.fileName }),
-          fileBuffer,
-        ]);
-
-        recipientPeer.ws.send(responseMessage);
+          // Enviar el JSON + archivo como Buffer
+          recipientPeer.ws.send(
+            Buffer.concat([
+              Buffer.from(
+                JSON.stringify({
+                  type: "receive-file",
+                  fileName: data.fileName,
+                })
+              ),
+              fileBuffer,
+            ])
+          );
+        }
       }
+    } else {
+      console.error("Formato de mensaje desconocido:", typeof message);
     }
   } catch (error) {
     console.error("Error procesando mensaje:", error);
