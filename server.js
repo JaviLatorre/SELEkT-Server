@@ -93,14 +93,6 @@ wss.on("connection", (ws) => {
 
   devices.push({ deviceId, ws, displayName, deviceName }); // Guardamos la referencia al WebSocket junto con el deviceId y displayName
 
-  ws.send(
-    JSON.stringify({
-      type: "display-name", // Tipo de mensaje que indica el nombre
-      displayName: displayName, // Nombre generado
-    })
-  );
-
-  // Enviar la lista de dispositivos conectados junto con su peerId
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(
@@ -115,6 +107,16 @@ wss.on("connection", (ws) => {
       );
     }
   });
+
+  ws.send(
+    JSON.stringify({
+      type: "display-name", // Tipo de mensaje que indica el nombre
+      displayName: displayName, // Nombre generado
+    })
+  );
+
+  // Enviar la lista de dispositivos conectados junto con su peerId
+  
 
   // Enviar un mensaje de "peer-joined" a todos los clientes con el nuevo peerId y su displayName
   wss.clients.forEach((client) => {
