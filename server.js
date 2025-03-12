@@ -43,28 +43,16 @@ function generateName(seed) {
   if (!seed) {
     seed = "defaultSeed";
   }
-  return {
-    displayName: uniqueNamesGenerator({
-      length: 2,
-      separator: " ",
-      dictionaries: [animales, colores],
-      style: "capital",
-      seed: hashCode(seed),
-    }),
-    deviceName: getDeviceName(),
-  };
-}
 
-function getDeviceName() {
-  if (typeof navigator !== "undefined" && navigator.userAgent) {
-    const ua = navigator.userAgent;
-    if (ua.indexOf("Android") > -1) return "Dispositivo Android";
-    if (ua.indexOf("iPhone") > -1 || ua.indexOf("iPad") > -1)
-      return "Dispositivo iOS";
-    if (ua.indexOf("Windows") > -1) return "PC con Windows";
-    if (ua.indexOf("Mac") > -1) return "Mac";
-  }
-  return "Dispositivo Desconocido";
+  const displayName = uniqueNamesGenerator({
+    length: 2,
+    separator: " ",
+    dictionaries: [animales, colores],
+    style: "capital",
+    seed: hashCode(seed),
+  });
+
+  return { displayName, deviceName: "Dispositivo" };
 }
 
 const PORT = process.env.PORT || 80;
@@ -75,9 +63,20 @@ let devices = [];
 
 wss.on("connection", (ws) => {
   console.log("Un cliente se ha conectado");
+
   const deviceId = `device-${Date.now()}`;
   const { displayName, deviceName } = generateName(deviceId);
+
+  ws.isAlive = true;
+  ws.deviceId = deviceId;
+  ws.displayName = displayName;
+  ws.deviceName = deviceName;
+
   devices.push({ deviceId, ws, displayName, deviceName });
+
+  ws.on("pong", () => {
+    ws.isAlive = true;
+  });
 
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
@@ -126,8 +125,6 @@ wss.on("connection", (ws) => {
             );
           }
         });
-      } else if (data.type === "pong") {
-        ws.lastPong = Date.now();
       }
     } catch (error) {
       console.error("Error procesando mensaje:", error);
@@ -137,6 +134,7 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     console.log("Un cliente se ha desconectado");
     devices = devices.filter((device) => device.deviceId !== deviceId);
+
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(
@@ -147,6 +145,7 @@ wss.on("connection", (ws) => {
         );
       }
     });
+
     wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(
@@ -165,22 +164,24 @@ wss.on("connection", (ws) => {
 });
 
 setInterval(() => {
-  const now = Date.now();
-  devices = devices.filter((device) => {
-    if (!device.ws.lastPong || now - device.ws.lastPong > 10000) {
-      console.log(`Eliminando peer inactivo: ${device.deviceId}`);
+  wss.clients.forEach((ws) => {
+    if (!ws.isAlive) {
+      console.log(`Cliente ${ws.deviceId} no responde. Desconectando...`);
+      ws.terminate();
+      devices = devices.filter((device) => device.deviceId !== ws.deviceId);
       wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(
-            JSON.stringify({ type: "peer-left", peerId: device.deviceId })
+            JSON.stringify({
+              type: "peer-left",
+              peerId: ws.deviceId,
+            })
           );
         }
       });
-      return false;
-    } else {
-      device.ws.send(JSON.stringify({ type: "ping" }));
-      return true;
     }
+    ws.isAlive = false;
+    ws.ping();
   });
 }, 5000);
 
