@@ -126,9 +126,12 @@ wss.on("connection", (ws) => {
           (device) => device.deviceId === data.peerId
         );
 
+        console.log("recipientPeer:", recipientPeer); // Verifica si está encontrando el peer
+        console.log("readyState de recipientPeer.ws:",recipientPeer.ws.readyState); // Verifica el estado
+
         if (recipientPeer && recipientPeer.ws.readyState === WebSocket.OPEN) {
           // Enviar el archivo solo al peer destinatario
-          console.log('Enviando archivo al Peer')
+          console.log("Enviando archivo al Peer");
           recipientPeer.ws.send(
             JSON.stringify({ type: "receive-file", fileData: data.fileData })
           );
