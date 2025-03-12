@@ -120,7 +120,6 @@ wss.on("connection", (ws) => {
 
       if (data.type === "send-file") {
         console.log("Recibiendo archivo...");
-        console.log("Tipo de fileData:", data.fileData); // Verifica si es un ArrayBuffer
 
         // Asegúrate de que fileData es un ArrayBuffer
         if (!(data.fileData instanceof ArrayBuffer)) {
@@ -133,10 +132,7 @@ wss.on("connection", (ws) => {
         );
 
         console.log("recipientPeer:", recipientPeer);
-        console.log(
-          "readyState de recipientPeer.ws:",
-          recipientPeer.ws.readyState
-        );
+       
 
         if (recipientPeer && recipientPeer.ws.readyState === WebSocket.OPEN) {
           console.log("Enviando archivo al Peer", data.fileData);
