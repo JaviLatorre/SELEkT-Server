@@ -63,7 +63,7 @@ wss.on("connection", (ws, req) => {
 
   // Notificar a todos los dispositivos en la misma IP sobre el nuevo dispositivo
   rooms[ip].forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
+    if (client.readyState === WebSocket.OPEN && client !== ws) {
       client.send(
         JSON.stringify({
           type: "update-devices",
