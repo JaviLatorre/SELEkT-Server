@@ -53,7 +53,15 @@ wss.on("connection", (ws, req) => {
 
   rooms[ip].push(ws);
 
-  // Notificar a todos los dispositivos en la misma IP
+  // Enviar el evento 'display-name' al dispositivo recién conectado
+  ws.send(
+    JSON.stringify({
+      type: "display-name",
+      displayName: ws.displayName
+    })
+  );
+
+  // Notificar a todos los dispositivos en la misma IP sobre el nuevo dispositivo
   rooms[ip].forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(
@@ -67,6 +75,25 @@ wss.on("connection", (ws, req) => {
         })
       );
     }
+  });
+
+  // Enviar el evento 'peer-joined' a todos los dispositivos en la IP
+  rooms[ip].forEach((client) => {
+    if (client.readyState === WebSocket.OPEN && client !== ws) {
+      client.send(
+        JSON.stringify({
+          type: "peer-joined",
+          peerId: ws.deviceId,
+          displayName: ws.displayName,
+          deviceName: ws.deviceName,
+        })
+      );
+    }
+  });
+
+  // Mantener las conexiones vivas
+  ws.on("pong", () => {
+    ws.isAlive = true;
   });
 
   ws.on("message", (message) => {
@@ -102,11 +129,13 @@ wss.on("connection", (ws, req) => {
     }
   });
 
+  // Escuchar cuando un cliente se desconecta
   ws.on("close", () => {
     console.log("Un cliente se ha desconectado");
 
     rooms[ip] = rooms[ip].filter((client) => client !== ws);
 
+    // Notificar a los demás dispositivos sobre la desconexión del peer
     rooms[ip].forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(
@@ -118,9 +147,24 @@ wss.on("connection", (ws, req) => {
       }
     });
 
+    // Si no quedan más dispositivos en la IP, eliminar la sala
     if (rooms[ip].length === 0) {
       delete rooms[ip];
     }
+  });
+
+  // Enviar un ping cada 30 segundos para mantener la conexión
+  const interval = setInterval(() => {
+    if (ws.isAlive === false) {
+      return ws.terminate();
+    }
+
+    ws.isAlive = false;
+    ws.ping(() => {});
+  }, 30000);
+
+  ws.on("close", () => {
+    clearInterval(interval);
   });
 });
 
