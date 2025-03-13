@@ -54,44 +54,40 @@ wss.on("connection", (ws, req) => {
   rooms[ip].push(ws);
 
   // Enviar el evento 'display-name' al dispositivo recién conectado
-  ws.send(
-    JSON.stringify({
-      type: "display-name",
-      displayName: ws.displayName
-    })
-  );
+   ws.send(
+     JSON.stringify({
+       type: "display-name",
+       displayName: ws.displayName,
+     })
+   );
 
-  // Notificar a todos los dispositivos en la misma IP sobre el nuevo dispositivo
-  rooms[ip].forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(
-        JSON.stringify({
-          type: "update-devices",
-          devices: rooms[ip].map((d) => ({
-            peerId: d.deviceId,
-            displayName: d.displayName,
-            deviceName: d.deviceName,
-          })),
-        })
-      );
-    }
-  });
-  
-  
-  rooms[ip].forEach((client) => {
-    if (client.readyState === WebSocket.OPEN && client !== ws) {
-      client.send(
-        JSON.stringify({
-          type: "update-devices",
-          devices: rooms[ip].map((d) => ({
-            peerId: d.deviceId,
-            displayName: d.displayName,
-            deviceName: d.deviceName,
-          })),
-        })
-      );
-    }
-  });
+   // Enviar la lista completa de dispositivos conectados cuando el cliente se conecta
+   ws.send(
+     JSON.stringify({
+       type: "update-devices",
+       devices: rooms[ip].map((d) => ({
+         peerId: d.deviceId,
+         displayName: d.displayName,
+         deviceName: d.deviceName,
+       })),
+     })
+   );
+
+   // Notificar a todos los dispositivos en la misma IP sobre el nuevo dispositivo
+   rooms[ip].forEach((client) => {
+     if (client.readyState === WebSocket.OPEN) {
+       client.send(
+         JSON.stringify({
+           type: "update-devices",
+           devices: rooms[ip].map((d) => ({
+             peerId: d.deviceId,
+             displayName: d.displayName,
+             deviceName: d.deviceName,
+           })),
+         })
+       );
+     }
+   });
 
   // Enviar el evento 'peer-joined' a todos los dispositivos en la IP
   setTimeout(() => {
