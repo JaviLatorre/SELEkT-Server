@@ -80,6 +80,12 @@ wss.on("connection", (ws, req) => {
   // Enviar el evento 'peer-joined' a todos los dispositivos en la IP
   rooms[ip].forEach((client) => {
     if (client.readyState === WebSocket.OPEN && client !== ws) {
+          console.log("Enviando peer-joined a:", client.deviceId);
+          console.log("Datos enviados:", {
+            peerId: ws.deviceId,
+            displayName: ws.displayName,
+            deviceName: ws.deviceName,
+          });
       client.send(
         JSON.stringify({
           type: "peer-joined",
