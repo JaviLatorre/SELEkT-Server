@@ -78,26 +78,26 @@ wss.on("connection", (ws, req) => {
   });
 
   // Enviar el evento 'peer-joined' a todos los dispositivos en la IP
-  rooms[ip].forEach((client) => {
-    console.log("Dispositivos en rooms[ip]:", rooms[ip].map(d => d.deviceId));
+  setTimeout(() => {
     console.log("Ejecutando peer-joined para la IP:", ip);
-    if (client.readyState === WebSocket.OPEN && client !== ws) {
-          console.log("Enviando peer-joined a:", client.deviceId);
-          console.log("Datos enviados:", {
+    console.log(
+      "Dispositivos en rooms[ip]:",
+      rooms[ip].map((d) => d.deviceId)
+    );
+
+    rooms[ip].forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(
+          JSON.stringify({
+            type: "peer-joined",
             peerId: ws.deviceId,
             displayName: ws.displayName,
             deviceName: ws.deviceName,
-          });
-      client.send(
-        JSON.stringify({
-          type: "peer-joined",
-          peerId: ws.deviceId,
-          displayName: ws.displayName,
-          deviceName: ws.deviceName,
-        })
-      );
-    }
-  });
+          })
+        );
+      }
+    });
+  }, 100);
 
   // Mantener las conexiones vivas
   ws.on("pong", () => {
