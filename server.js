@@ -31,35 +31,53 @@ const wss = new WebSocket.Server({ server });
 
 let rooms = {}; // Agrupar dispositivos por IP
 
-wss.on("connection", (ws, req) => {
-  console.log("Un cliente se ha conectado");
+wss.on(
+  "connection",
+  (ws, req) => {
+    console.log("Un cliente se ha conectado");
 
-  // Obtener la IP del cliente
-  const ip =
-    req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
+    // Obtener la IP del cliente
+    const ip =
+      req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
-  if (!rooms[ip]) {
-    rooms[ip] = [];
-  }
+    if (!rooms[ip]) {
+      rooms[ip] = [];
+    }
 
-  const deviceId = `device-${Date.now()}`;
-  const { displayName, deviceName } = generateName(deviceId);
+    const deviceId = `device-${Date.now()}`;
+    const { displayName, deviceName } = generateName(deviceId);
 
-  ws.isAlive = true;
-  ws.deviceId = deviceId;
-  ws.displayName = displayName;
-  ws.deviceName = deviceName;
-  ws.ip = ip;
+    ws.isAlive = true;
+    ws.deviceId = deviceId;
+    ws.displayName = displayName;
+    ws.deviceName = deviceName;
+    ws.ip = ip;
 
-  rooms[ip].push(ws);
+    rooms[ip].push(ws);
 
-  // Enviar el evento 'display-name' al dispositivo recién conectado
-   ws.send(
-     JSON.stringify({
-       type: "display-name",
-       displayName: ws.displayName,
-     })
-   );
+    // Enviar el evento 'display-name' al dispositivo recién conectado
+    ws.send(
+      JSON.stringify({
+        type: "display-name",
+        displayName: ws.displayName,
+      })
+    );
+
+    rooms[ip].forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(
+          JSON.stringify({
+            type: "peer-joined",
+            peerId: ws.deviceId,
+            displayName: ws.displayName,
+            deviceName: ws.deviceName,
+          })
+        );
+      }
+    });
+  },
+  100
+);
 
    // Enviar la lista completa de dispositivos conectados cuando el cliente se conecta
    ws.send(
@@ -72,6 +90,7 @@ wss.on("connection", (ws, req) => {
        })),
      })
    );
+   
 
    // Notificar a todos los dispositivos en la misma IP sobre el nuevo dispositivo
    rooms[ip].forEach((client) => {
@@ -97,19 +116,7 @@ wss.on("connection", (ws, req) => {
       rooms[ip].map((d) => d.deviceId)
     );
 
-    rooms[ip].forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(
-          JSON.stringify({
-            type: "peer-joined",
-            peerId: ws.deviceId,
-            displayName: ws.displayName,
-            deviceName: ws.deviceName,
-          })
-        );
-      }
-    });
-  }, 100);
+    
 
   // Mantener las conexiones vivas
   ws.on("pong", () => {
