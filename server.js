@@ -1,50 +1,19 @@
 const WebSocket = require("ws");
 const http = require("http");
 const { uniqueNamesGenerator } = require("unique-names-generator");
-const { Blob } = require("buffer");
 
-const colores = [
-  "Rojo",
-  "Verde",
-  "Azul",
-  "Amarillo",
-  "Naranja",
-  "Rosa",
-  "Morado",
-  "Feliz",
-  "Marrón",
-  "Gris",
-];
-
-const animales = [
-  "Perro",
-  "Gato",
-  "Pájaro",
-  "Elefante",
-  "Tigre",
-  "León",
-  "Zorro",
-  "Rana",
-  "Serpiente",
-  "Caballo",
-];
+const colores = ["Rojo", "Verde", "Azul", "Amarillo", "Naranja"];
+const animales = ["Perro", "Gato", "Pájaro", "Elefante", "Tigre"];
 
 function hashCode(str) {
   let hash = 0;
-  if (str.length === 0) return hash;
   for (let i = 0; i < str.length; i++) {
-    const chr = str.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
-    hash |= 0;
+    hash = (hash << 5) - hash + str.charCodeAt(i);
   }
   return hash;
 }
 
 function generateName(seed) {
-  if (!seed) {
-    seed = "defaultSeed";
-  }
-
   const displayName = uniqueNamesGenerator({
     length: 2,
     separator: " ",
@@ -60,10 +29,18 @@ const PORT = process.env.PORT || 80;
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
 
-let devices = [];
+let rooms = {}; // Agrupar dispositivos por IP
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
   console.log("Un cliente se ha conectado");
+
+  // Obtener la IP del cliente
+  const ip =
+    req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
+
+  if (!rooms[ip]) {
+    rooms[ip] = [];
+  }
 
   const deviceId = `device-${Date.now()}`;
   const { displayName, deviceName } = generateName(deviceId);
@@ -72,19 +49,17 @@ wss.on("connection", (ws) => {
   ws.deviceId = deviceId;
   ws.displayName = displayName;
   ws.deviceName = deviceName;
+  ws.ip = ip;
 
-  devices.push({ deviceId, ws, displayName, deviceName });
+  rooms[ip].push(ws);
 
-  ws.on("pong", () => {
-    ws.isAlive = true;
-  });
-
-  wss.clients.forEach((client) => {
+  // Notificar a todos los dispositivos en la misma IP
+  rooms[ip].forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(
         JSON.stringify({
           type: "update-devices",
-          devices: devices.map((d) => ({
+          devices: rooms[ip].map((d) => ({
             peerId: d.deviceId,
             displayName: d.displayName,
             deviceName: d.deviceName,
@@ -94,89 +69,45 @@ wss.on("connection", (ws) => {
     }
   });
 
-  ws.send(
-    JSON.stringify({
-      type: "display-name",
-      displayName: displayName,
-    })
-  );
+  ws.on("message", (message) => {
+    try {
+      if (Buffer.isBuffer(message)) {
+        const separatorIndex = message.indexOf(125) + 1;
+        if (separatorIndex === 0) return;
 
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(
-        JSON.stringify({
-          type: "peer-joined",
-          peerId: deviceId,
-          displayName: displayName,
-          deviceName: deviceName,
-        })
-      );
+        const jsonString = message.slice(0, separatorIndex).toString("utf-8");
+        const data = JSON.parse(jsonString);
+
+        if (data.type === "send-file") {
+          const fileBuffer = message.slice(separatorIndex);
+
+          const recipient = rooms[ip].find((d) => d.deviceId === data.peerId);
+          if (recipient && recipient.readyState === WebSocket.OPEN) {
+            recipient.send(
+              Buffer.concat([
+                Buffer.from(
+                  JSON.stringify({
+                    type: "receive-file",
+                    fileName: data.fileName,
+                  })
+                ),
+                fileBuffer,
+              ])
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error procesando mensaje:", error);
     }
   });
 
-ws.on("message", async (message) => {
-  console.log("Mensaje recibido en el servidor.");
-
-  try {
-    // Verificar si message es un Buffer (lo esperado en WebSocket de Node.js)
-    if (Buffer.isBuffer(message)) {
-      console.log("Mensaje recibido como Buffer.");
-
-      // Buscar el final del JSON en el mensaje
-      const separatorIndex = message.indexOf(125) + 1; // 125 es "}" en ASCII
-      if (separatorIndex === 0) throw new Error("No se encontró JSON válido");
-
-      // Extraer JSON del mensaje
-      const jsonString = message.slice(0, separatorIndex).toString("utf-8");
-      const data = JSON.parse(jsonString);
-
-      if (data.type === "send-file") {
-        console.log("Recibiendo archivo:", data.fileName);
-
-        // Extraer los datos del archivo del buffer restante
-        const fileBuffer = message.slice(separatorIndex);
-
-        // Encontrar el destinatario
-        const recipientPeer = devices.find(
-          (device) => device.deviceId === data.peerId
-        );
-
-        console.log("recipientPeer:", recipientPeer);
-
-        if (recipientPeer && recipientPeer.ws.readyState === WebSocket.OPEN) {
-          console.log("Enviando archivo al Peer");
-
-          // Enviar el JSON + archivo como Buffer
-          recipientPeer.ws.send(
-            Buffer.concat([
-              Buffer.from(
-                JSON.stringify({
-                  type: "receive-file",
-                  fileName: data.fileName,
-                })
-              ),
-              fileBuffer,
-            ])
-          );
-        }
-      }
-    } else {
-      console.error("Formato de mensaje desconocido:", typeof message);
-    }
-  } catch (error) {
-    console.error("Error procesando mensaje:", error);
-  }
-});
-
-
-
-
-
   ws.on("close", () => {
     console.log("Un cliente se ha desconectado");
-    devices = devices.filter((device) => device.deviceId !== deviceId);
 
-    wss.clients.forEach((client) => {
+    rooms[ip] = rooms[ip].filter((client) => client !== ws);
+
+    rooms[ip].forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(
           JSON.stringify({
@@ -187,44 +118,11 @@ ws.on("message", async (message) => {
       }
     });
 
-    wss.clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(
-          JSON.stringify({
-            type: "update-devices",
-            devices: devices.map((d) => ({
-              peerId: d.deviceId,
-              displayName: d.displayName,
-              deviceName: d.deviceName,
-            })),
-          })
-        );
-      }
-    });
+    if (rooms[ip].length === 0) {
+      delete rooms[ip];
+    }
   });
 });
-
-setInterval(() => {
-  wss.clients.forEach((ws) => {
-    if (!ws.isAlive) {
-      console.log(`Cliente ${ws.deviceId} no responde. Desconectando...`);
-      ws.terminate();
-      devices = devices.filter((device) => device.deviceId !== ws.deviceId);
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(
-            JSON.stringify({
-              type: "peer-left",
-              peerId: ws.deviceId,
-            })
-          );
-        }
-      });
-    }
-    ws.isAlive = false;
-    ws.ping();
-  });
-}, 5000);
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
